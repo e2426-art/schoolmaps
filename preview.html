@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>GeoJSON 学校施設マップ</title>
+
+  <!-- Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet/dist/leaflet.css"
+  />
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #f3f4f6;
+    }
+
+    header {
+      height: 60px;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      background: white;
+      border-bottom: 1px solid #ddd;
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    #map {
+      width: 100%;
+      height: calc(100vh - 60px);
+    }
+
+    .popup-title {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .popup-row {
+      margin-bottom: 4px;
+      font-size: 13px;
+    }
+
+    .popup-label {
+      color: #666;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  🏫 学校施設 GeoJSON マップ
+</header>
+
+<div id="map"></div>
+
+<script>
+
+/* ==========================================
+   学校種別コード
+========================================== */
+
+const schoolTypes = {
+
+  "16001": "小学校",
+  "16002": "中学校",
+  "16003": "中等教育学校",
+  "16004": "高等学校",
+  "16005": "高等専門学校",
+  "16006": "短期大学",
+  "16007": "大学",
+  "16011": "幼稚園",
+  "16012": "特別支援学校",
+  "16013": "幼保連携型認定こども園",
+  "16014": "義務教育学校",
+  "16015": "各種学校",
+  "16016": "専修学校"
+
+};
+
+/* ==========================================
+   地図生成
+========================================== */
+
+const map = L.map("map").setView(
+  [35.681236, 139.767125],
+  11
+);
+
+/* ==========================================
+   OpenStreetMap
+========================================== */
+
+L.tileLayer(
+  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  {
+    attribution:
+      "&copy; OpenStreetMap contributors"
+  }
+).addTo(map);
+
+/* ==========================================
+   GeoJSON読込
+   ※ HTMLと同じフォルダに置く
+========================================== */
+
+fetch("P29-23_13.geojson")
+
+  .then(response => {
+
+    if (!response.ok) {
+      throw new Error("GeoJSON読込失敗");
+    }
+
+    return response.json();
+  })
+
+  .then(data => {
+
+    const geoLayer = L.geoJSON(data, {
+
+      /* ------------------------------
+         ポイント描画
+      ------------------------------ */
+
+      pointToLayer: function(feature, latlng) {
+
+        return L.circleMarker(latlng, {
+
+          radius: 5,
+
+          fillColor: "#2563eb",
+
+          color: "#1d4ed8",
+
+          weight: 1,
+
+          opacity: 1,
+
+          fillOpacity: 0.8
+
+        });
+
+      },
+
+      /* ------------------------------
+         ポップアップ
+      ------------------------------ */
+
+      onEachFeature: function(feature, layer) {
+
+        const p = feature.properties;
+
+        const schoolType =
+          schoolTypes[p.P29_003]
+          || p.P29_003;
+
+        const popupHtml = `
+
+          <div class="popup-title">
+            ${p.P29_004 || "名称不明"}
+          </div>
+
+          <div class="popup-row">
+            <span class="popup-label">
+              学校種別:
+            </span>
+            ${schoolType}
+          </div>
+
+          <div class="popup-row">
+            <span class="popup-label">
+              住所:
+            </span>
+            ${p.P29_005 || "-"}
+          </div>
+
+          <div class="popup-row">
+            <span class="popup-label">
+              自治体コード:
+            </span>
+            ${p.P29_001 || "-"}
+          </div>
+
+          <div class="popup-row">
+            <span class="popup-label">
+              施設ID:
+            </span>
+            ${p.P29_002 || "-"}
+          </div>
+
+        `;
+
+        layer.bindPopup(popupHtml);
+
+      }
+
+    }).addTo(map);
+
+    /* ------------------------------
+       表示範囲自動調整
+    ------------------------------ */
+
+    map.fitBounds(
+      geoLayer.getBounds()
+    );
+
+  })
+
+  .catch(error => {
+
+    console.error(error);
+
+    alert(
+      "GeoJSONファイルの読込に失敗しました。\n\n" +
+      "HTMLファイルと\n" +
+      "P29-23_13.geojson\n" +
+      "を同じフォルダに置いてください。"
+    );
+
+  });
+
+</script>
+
+</body>
+</html>
